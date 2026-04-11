@@ -61,7 +61,8 @@ def check_env():
     if not os.getenv("GH_TOKEN"):
         log.warning("⚠️ GH_TOKEN not found. Persistence is disabled.")
 
-WS_URL           = "wss://ws.binaryws.com/websockets/v3?app_id=1089"
+APP_ID           = 1089
+WS_URL           = f"wss://ws.binaryws.com/websockets/v3?app_id={APP_ID}"
 SYMBOL           = "R_100"
 DURATION         = 1
 DURATION_UNIT    = "t"
@@ -226,11 +227,11 @@ async def run_sentinel():
     check_env()
     
     API_TOKEN = os.getenv("DERIV_TOKEN")
-    log.info("🌌 THE VOID SENTINEL v3.1 initializing...")
+    log.info("🌌 THE VOID SENTINEL v3.2 initializing...")
     if not GH_TOKEN:
         log.warning("⚠️ Persistence token (GH_TOKEN) missing. Variables will not be saved.")
     
-    api = DerivAPI(endpoint=WS_URL)
+    api = DerivAPI(app_id=APP_ID, endpoint=WS_URL)
     
     try:
         auth_resp = await api.authorize({"authorize": API_TOKEN})
