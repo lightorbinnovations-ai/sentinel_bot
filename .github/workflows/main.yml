@@ -7,7 +7,7 @@ on:
 
 jobs:
   trade:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     concurrency:
       group: void-sentinel-trading
       cancel-in-progress: false # We don't want to kill a live trade
@@ -23,12 +23,10 @@ jobs:
 
       - name: Install Dependencies & Connectivity Diagnostic
         run: |
-          python3 -m pip install --upgrade pip setuptools wheel
-          python3 -m pip install -r requirements.txt
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r requirements.txt
           echo "🌐 Testing connectivity to Global Clusters..."
-          curl -v --connect-timeout 10 https://ws.derivws.com/websockets/v3?app_id=1089 || echo "Primary Down"
-          curl -v --connect-timeout 10 https://ws.binaryws.com/websockets/v3?app_id=1089 || echo "Legacy Down"
-          curl -v --connect-timeout 10 https://green.binaryws.com/websockets/v3?app_id=1089 || echo "Green Down"
+          curl -v --connect-timeout 10 https://ws.binaryws.com/websockets/v3?app_id=1089
 
       - name: Run The Void Sentinel
         env:
@@ -41,5 +39,6 @@ jobs:
           GHOST_THRESHOLD: ${{ vars.GHOST_THRESHOLD || '3' }}
           TAKE_PROFIT: ${{ vars.TAKE_PROFIT || '10.00' }}
         run: |
-          # Use python3 explicitly and disable output buffering for real-time logs
-          timeout 13m python3 -u sentinel.py || echo "Session completed or interrupted."
+          # Windows uses different timeout syntax
+          # Using -u for unbuffered output
+          python -u sentinel.py
