@@ -62,10 +62,12 @@ def check_env():
         log.warning("⚠️ GH_TOKEN not found. Persistence is disabled.")
 
 APP_ID           = 1089
-# Using the newer global endpoint for better stability
-WS_URL           = f"wss://ws.derivws.com/websockets/v3?app_id={APP_ID}"
-# Backup endpoint if the first one fails
-BACKUP_URL       = f"wss://ws.binaryws.com/websockets/v3?app_id={APP_ID}"
+# Server Rotation List (trying multiple clusters for cloud stability)
+ENDPOINTS = [
+    f"wss://ws.derivws.com/websockets/v3?app_id={APP_ID}",
+    f"wss://ws.binaryws.com/websockets/v3?app_id={APP_ID}",
+    f"wss://green.binaryws.com/websockets/v3?app_id={APP_ID}"
+]
 SYMBOL           = "R_100"
 DURATION         = 1
 DURATION_UNIT    = "t"
@@ -235,27 +237,31 @@ async def run_sentinel():
     if not os.getenv("GH_TOKEN"):
         print("⚠️ [WARN] Persistence disabled (GH_TOKEN missing).", flush=True)
     
-    try:
-        print(f"📡 [CONN] Connecting to {SYMBOL} (Primary)...", flush=True)
+    success = False
+    for url in ENDPOINTS:
         try:
-            api = DerivAPI(app_id=APP_ID, endpoint=WS_URL)
-            # Short test probe
+            print(f"📡 [CONN] Trying endpoint: {url.split('//')[1].split('/')[0]}...", flush=True)
+            api = DerivAPI(app_id=APP_ID, endpoint=url)
+            
+            # Fast ping test
             await asyncio.wait_for(api.ping({"ping": 1}), timeout=10.0)
-        except:
-            print(f"🔄 [RETRY] Primary failed. Trying Backup...", flush=True)
-            api = DerivAPI(app_id=APP_ID, endpoint=BACKUP_URL)
-        
-        print("🔑 [AUTH] Authorizing token...", flush=True)
-        auth_resp = await asyncio.wait_for(api.authorize({"authorize": API_TOKEN}), timeout=25.0)
-        
-        start_bal = float(auth_resp['authorize']['balance'])
-        print(f"✅ [READY] Account: {auth_resp['authorize']['loginid']} | Balance: ${start_bal:.2f}", flush=True)
-        await send_tele_message(f"🚀 Sentinel Online. Balance: ${start_bal:.2f}")
-    except asyncio.TimeoutError:
-        print("❌ [FATAL] Connection timed out after 20 seconds.", flush=True)
-        sys.exit(1)
-    except Exception as e:
-        print(f"❌ [FATAL] Auth failure: {e}", flush=True)
+            
+            print("🔑 [AUTH] Authorizing token...", flush=True)
+            # Increased timeout to 45s for slow cloud handshakes
+            auth_resp = await asyncio.wait_for(api.authorize({"authorize": API_TOKEN}), timeout=45.0)
+            
+            start_bal = float(auth_resp['authorize']['balance'])
+            print(f"✅ [READY] Account: {auth_resp['authorize']['loginid']} | Balance: ${start_bal:.2f}", flush=True)
+            await send_tele_message(f"🚀 Sentinel Online. Balance: ${start_bal:.2f}")
+            success = True
+            break
+        except asyncio.TimeoutError:
+            print("⚠️ [TIMEOUT] Server did not respond. Trying next...", flush=True)
+        except Exception as e:
+            print(f"⚠️ [WARN] Connection error on this endpoint: {e}", flush=True)
+            
+    if not success:
+        print("❌ [FATAL] All connection attempts failed. Possible IP block or invalid token.", flush=True)
         sys.exit(1)
 
     state = SentinelState(start_bal)

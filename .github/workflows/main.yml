@@ -21,12 +21,14 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Dependencies & Connectivity Test
+      - name: Install Dependencies & Connectivity Diagnostic
         run: |
           python3 -m pip install --upgrade pip setuptools wheel
           python3 -m pip install -r requirements.txt
-          echo "🌐 Testing connectivity to Deriv..."
-          curl -v https://ws.derivws.com/websockets/v3?app_id=1089 || echo "⚠️ Connectivity to primary endpoint failed"
+          echo "🌐 Testing connectivity to Global Clusters..."
+          curl -v --connect-timeout 10 https://ws.derivws.com/websockets/v3?app_id=1089 || echo "Primary Down"
+          curl -v --connect-timeout 10 https://ws.binaryws.com/websockets/v3?app_id=1089 || echo "Legacy Down"
+          curl -v --connect-timeout 10 https://green.binaryws.com/websockets/v3?app_id=1089 || echo "Green Down"
 
       - name: Run The Void Sentinel
         env:
