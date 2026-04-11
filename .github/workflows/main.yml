@@ -23,8 +23,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python3 -m pip install --upgrade pip setuptools wheel
+          python3 -m pip install -r requirements.txt
 
       - name: Run The Void Sentinel
         env:
@@ -37,6 +37,5 @@ jobs:
           GHOST_THRESHOLD: ${{ vars.GHOST_THRESHOLD || '3' }}
           TAKE_PROFIT: ${{ vars.TAKE_PROFIT || '10.00' }}
         run: |
-          # Run the bot for a maximum of 13 minutes to allow next cron to start clean
-          # Use timeout to ensure it doesn't overlap or hang
-          timeout 13m python sentinel.py || echo "Session timed out or completed."
+          # Use python3 explicitly and disable output buffering for real-time logs
+          timeout 13m python3 -u sentinel.py || echo "Session completed or interrupted."

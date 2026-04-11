@@ -33,12 +33,10 @@ logging.basicConfig(
 )
 log = logging.getLogger("VoidSentinel")
 
-# ═════════════════════════════════════════════════════════════════════════════
-#                         ENVIRONMENT & CONFIGURATION
-# ═════════════════════════════════════════════════════════════════════════════
-
+# ── Global Configuration ──────────────────────────────────────────────────────
+# Pulling core identities
 API_TOKEN        = os.getenv("DERIV_TOKEN")
-GH_TOKEN         = os.getenv("GH_TOKEN")
+GH_TOKEN          = os.getenv("GH_TOKEN")
 REPO_NAME        = os.getenv("GITHUB_REPOSITORY")
 TELEGRAM_TOKEN   = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
@@ -49,6 +47,19 @@ STOP_LOSS_LIMIT  = float(os.getenv("STOP_LOSS", "2.00"))
 TAKE_PROFIT      = float(os.getenv("TAKE_PROFIT", "10.00"))
 MAX_STAKE_CAP    = float(os.getenv("MAX_STAKE", "15.00"))
 GHOST_THRESHOLD  = int(os.getenv("GHOST_THRESHOLD", "3"))
+
+# ── Pre-Flight Verification ───────────────────────────────────────────────────
+def check_env():
+    required = ["DERIV_TOKEN", "TELEGRAM_TOKEN", "TELEGRAM_CHAT_ID"]
+    missing = [v for v in required if not os.getenv(v)]
+    if missing:
+        log.critical(f"❌ MISSING SECRETS: {', '.join(missing)}")
+        log.critical("Ensure these are added to GitHub Secrets (NOT Variables).")
+        sys.exit(1)
+    
+    # Check variables (optional but good to know)
+    if not os.getenv("GH_TOKEN"):
+        log.warning("⚠️ GH_TOKEN not found. Persistence is disabled.")
 
 WS_URL           = "wss://ws.binaryws.com/websockets/v3?app_id=1089"
 SYMBOL           = "R_100"
@@ -212,11 +223,10 @@ class SentinelState:
 # ═════════════════════════════════════════════════════════════════════════════
 
 async def run_sentinel():
-    if not API_TOKEN:
-        log.error("❌ DERIV_TOKEN not found! Emergency shutdown.")
-        return
-
-    log.info("🌌 THE VOID SENTINEL v3.0 initializing...")
+    check_env()
+    
+    API_TOKEN = os.getenv("DERIV_TOKEN")
+    log.info("🌌 THE VOID SENTINEL v3.1 initializing...")
     if not GH_TOKEN:
         log.warning("⚠️ Persistence token (GH_TOKEN) missing. Variables will not be saved.")
     
@@ -228,8 +238,8 @@ async def run_sentinel():
         log.info(f"📡 Connection Established. Balance: ${start_bal:.2f}")
         await send_tele_message(f"🚀 Sentinel Online. Balance: ${start_bal:.2f}\nTarget: +${TAKE_PROFIT}")
     except Exception as e:
-        log.error(f"❌ Auth failure: {e}")
-        return
+        log.critical(f"❌ Auth failure: {e}")
+        sys.exit(1)
 
     state = SentinelState(start_bal)
     ctrl = SentinelControl(STOP_LOSS_LIMIT, INITIAL_STAKE)
