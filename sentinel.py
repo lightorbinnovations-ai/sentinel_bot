@@ -238,9 +238,13 @@ async def run_sentinel():
     log.info("📥 Warming up engines (Syncing history)...")
     try:
         history = await api.ticks_history({"ticks_history": SYMBOL, "count": 100, "end": "latest", "style": "ticks"})
+        if 'error' in history:
+            log.error(f"❌ Warm-up Error: {history['error'].get('message', 'Unknown error')}")
+            return
         prices.extend([float(p) for p in history['history']['prices']])
     except Exception as e:
-        log.error(f"❌ Warm-up failed: {e}")
+        log.error(f"❌ Warm-up Critical Failure: {e}")
+        return
 
     while True:
         try:
