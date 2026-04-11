@@ -234,41 +234,38 @@ class SentinelState:
 # ═════════════════════════════════════════════════════════════════════════════
 
 async def run_sentinel():
-    print("🚀 [PRERUN] Starting Sentinel v3.3...", flush=True)
+    print("[PRERUN] Starting Sentinel v3.3...", flush=True)
     check_env()
     
     API_TOKEN = os.getenv("DERIV_TOKEN")
-    print("🌌 [INIT] The Void Sentinel waking up...", flush=True)
+    print("[INIT] The Void Sentinel waking up...", flush=True)
     if not os.getenv("GH_TOKEN"):
-        print("⚠️ [WARN] Persistence disabled (GH_TOKEN missing).", flush=True)
+        print("[WARN] Persistence disabled (GH_TOKEN missing).", flush=True)
     
     success = False
     for url in ENDPOINTS:
         try:
-            print(f"📡 [CONN] Stealth Handshake with: {url.split('//')[1].split('/')[0]}...", flush=True)
-            # Patching connection with stealth headers if possible
-            # Note: deriv_api doesn't expose headers easily, so we rely on the URL-based app_id
-            # and standard library behavior. We'll try a more robust timeout.
+            print(f"[CONN] Stealth Handshake with: {url.split('//')[1].split('/')[0]}...", flush=True)
             api = DerivAPI(app_id=APP_ID, endpoint=url)
             
             # Ping test with shorter timeout to cycle fast
             await asyncio.wait_for(api.ping({"ping": 1}), timeout=15.0)
             
-            print("🔑 [AUTH] Authorizing token (Stealth Mode)...", flush=True)
+            print("[AUTH] Authorizing token (Stealth Mode)...", flush=True)
             auth_resp = await asyncio.wait_for(api.authorize({"authorize": API_TOKEN}), timeout=50.0)
             
             start_bal = float(auth_resp['authorize']['balance'])
-            print(f"✅ [READY] Account: {auth_resp['authorize']['loginid']} | Balance: ${start_bal:.2f}", flush=True)
+            print(f"[READY] Account: {auth_resp['authorize']['loginid']} | Balance: ${start_bal:.2f}", flush=True)
             await send_tele_message(f"🚀 Sentinel Online. Balance: ${start_bal:.2f}")
             success = True
             break
         except asyncio.TimeoutError:
-            print("⚠️ [TIMEOUT] Server did not respond. Trying next...", flush=True)
+            print("[TIMEOUT] Server did not respond. Trying next...", flush=True)
         except Exception as e:
-            print(f"⚠️ [WARN] Connection error on this endpoint: {e}", flush=True)
+            print(f"[WARN] Connection error on this endpoint: {e}", flush=True)
             
     if not success:
-        print("❌ [FATAL] All connection attempts failed. Possible IP block or invalid token.", flush=True)
+        print("[FATAL] All connection attempts failed. Possible IP block or invalid token.", flush=True)
         sys.exit(1)
 
     state = SentinelState(start_bal)

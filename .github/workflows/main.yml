@@ -30,6 +30,7 @@ jobs:
 
       - name: Run The Void Sentinel
         env:
+          PYTHONUTF8: 1
           DERIV_TOKEN: ${{ secrets.DERIV_TOKEN }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
