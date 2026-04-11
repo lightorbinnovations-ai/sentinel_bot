@@ -62,7 +62,10 @@ def check_env():
         log.warning("⚠️ GH_TOKEN not found. Persistence is disabled.")
 
 APP_ID           = 1089
-WS_URL           = f"wss://ws.binaryws.com/websockets/v3?app_id={APP_ID}"
+# Using the newer global endpoint for better stability
+WS_URL           = f"wss://ws.derivws.com/websockets/v3?app_id={APP_ID}"
+# Backup endpoint if the first one fails
+BACKUP_URL       = f"wss://ws.binaryws.com/websockets/v3?app_id={APP_ID}"
 SYMBOL           = "R_100"
 DURATION         = 1
 DURATION_UNIT    = "t"
@@ -233,13 +236,17 @@ async def run_sentinel():
         print("⚠️ [WARN] Persistence disabled (GH_TOKEN missing).", flush=True)
     
     try:
-        print(f"📡 [CONN] Connecting to {SYMBOL}...", flush=True)
-        # Add timeout to DerivAPI connection if possible, or wrap authorize
-        api = DerivAPI(app_id=APP_ID, endpoint=WS_URL)
+        print(f"📡 [CONN] Connecting to {SYMBOL} (Primary)...", flush=True)
+        try:
+            api = DerivAPI(app_id=APP_ID, endpoint=WS_URL)
+            # Short test probe
+            await asyncio.wait_for(api.ping({"ping": 1}), timeout=10.0)
+        except:
+            print(f"🔄 [RETRY] Primary failed. Trying Backup...", flush=True)
+            api = DerivAPI(app_id=APP_ID, endpoint=BACKUP_URL)
         
         print("🔑 [AUTH] Authorizing token...", flush=True)
-        # Wrap authorize in a timeout to prevent hanging forever
-        auth_resp = await asyncio.wait_for(api.authorize({"authorize": API_TOKEN}), timeout=20.0)
+        auth_resp = await asyncio.wait_for(api.authorize({"authorize": API_TOKEN}), timeout=25.0)
         
         start_bal = float(auth_resp['authorize']['balance'])
         print(f"✅ [READY] Account: {auth_resp['authorize']['loginid']} | Balance: ${start_bal:.2f}", flush=True)
