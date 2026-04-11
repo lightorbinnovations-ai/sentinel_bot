@@ -62,11 +62,11 @@ def check_env():
         log.warning("⚠️ GH_TOKEN not found. Persistence is disabled.")
 
 APP_ID           = 1089
-# Server Rotation List (trying multiple clusters for cloud stability)
-ENDPOINTS = [
-    f"wss://ws.derivws.com/websockets/v3?app_id={APP_ID}",
-    f"wss://ws.binaryws.com/websockets/v3?app_id={APP_ID}",
-    f"wss://green.binaryws.com/websockets/v3?app_id={APP_ID}"
+# Direct Endpoints (un-parameterized)
+BASE_ENDPOINTS = [
+    "wss://ws.derivws.com/websockets/v3",
+    "wss://ws.binaryws.com/websockets/v3",
+    "wss://green.binaryws.com/websockets/v3"
 ]
 # Stealth Headers (making the connection look like a real browser)
 STEALTH_HEADERS = {
@@ -243,16 +243,17 @@ async def run_sentinel():
         print("[WARN] Persistence disabled (GH_TOKEN missing).", flush=True)
     
     success = False
-    for url in ENDPOINTS:
+    for base_url in BASE_ENDPOINTS:
         try:
-            print(f"[CONN] Stealth Handshake with: {url.split('//')[1].split('/')[0]}...", flush=True)
+            # Reconstruct clean URL
+            url = f"{base_url}?app_id={APP_ID}"
+            print(f"[CONN] Direct Connect: {base_url.split('//')[1]}...", flush=True)
+            
+            # Use the library with a clean endpoint override
             api = DerivAPI(app_id=APP_ID, endpoint=url)
             
-            # Ping test with shorter timeout to cycle fast
-            await asyncio.wait_for(api.ping({"ping": 1}), timeout=15.0)
-            
-            print("[AUTH] Authorizing token (Stealth Mode)...", flush=True)
-            auth_resp = await asyncio.wait_for(api.authorize({"authorize": API_TOKEN}), timeout=50.0)
+            print("[AUTH] Challenging token...", flush=True)
+            auth_resp = await asyncio.wait_for(api.authorize({"authorize": API_TOKEN}), timeout=55.0)
             
             start_bal = float(auth_resp['authorize']['balance'])
             print(f"[READY] Account: {auth_resp['authorize']['loginid']} | Balance: ${start_bal:.2f}", flush=True)
