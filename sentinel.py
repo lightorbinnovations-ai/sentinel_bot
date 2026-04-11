@@ -224,22 +224,31 @@ class SentinelState:
 # ═════════════════════════════════════════════════════════════════════════════
 
 async def run_sentinel():
+    print("🚀 [PRERUN] Starting Sentinel v3.3...", flush=True)
     check_env()
     
     API_TOKEN = os.getenv("DERIV_TOKEN")
-    log.info("🌌 THE VOID SENTINEL v3.2 initializing...")
-    if not GH_TOKEN:
-        log.warning("⚠️ Persistence token (GH_TOKEN) missing. Variables will not be saved.")
-    
-    api = DerivAPI(app_id=APP_ID, endpoint=WS_URL)
+    print("🌌 [INIT] The Void Sentinel waking up...", flush=True)
+    if not os.getenv("GH_TOKEN"):
+        print("⚠️ [WARN] Persistence disabled (GH_TOKEN missing).", flush=True)
     
     try:
-        auth_resp = await api.authorize({"authorize": API_TOKEN})
+        print(f"📡 [CONN] Connecting to {SYMBOL}...", flush=True)
+        # Add timeout to DerivAPI connection if possible, or wrap authorize
+        api = DerivAPI(app_id=APP_ID, endpoint=WS_URL)
+        
+        print("🔑 [AUTH] Authorizing token...", flush=True)
+        # Wrap authorize in a timeout to prevent hanging forever
+        auth_resp = await asyncio.wait_for(api.authorize({"authorize": API_TOKEN}), timeout=20.0)
+        
         start_bal = float(auth_resp['authorize']['balance'])
-        log.info(f"📡 Connection Established. Balance: ${start_bal:.2f}")
-        await send_tele_message(f"🚀 Sentinel Online. Balance: ${start_bal:.2f}\nTarget: +${TAKE_PROFIT}")
+        print(f"✅ [READY] Account: {auth_resp['authorize']['loginid']} | Balance: ${start_bal:.2f}", flush=True)
+        await send_tele_message(f"🚀 Sentinel Online. Balance: ${start_bal:.2f}")
+    except asyncio.TimeoutError:
+        print("❌ [FATAL] Connection timed out after 20 seconds.", flush=True)
+        sys.exit(1)
     except Exception as e:
-        log.critical(f"❌ Auth failure: {e}")
+        print(f"❌ [FATAL] Auth failure: {e}", flush=True)
         sys.exit(1)
 
     state = SentinelState(start_bal)
